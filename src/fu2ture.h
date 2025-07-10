@@ -14,6 +14,7 @@ typedef struct {
     GLuint vao;
     GLuint vbo;
     GLuint ebo;
+    GLuint tex;
 } Game_State;
 
 void on_init(Game_State *state, GLFWwindow *window, float window_w, float window_h, float window_px_w, float window_px_h, bool is_live_scene, GLuint fbo, int argc, char **argv);
