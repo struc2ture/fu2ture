@@ -5,6 +5,7 @@
 #include <OpenGL/gl3.h>
 #include <GLFW/glfw3.h>
 
+#include "gl_glue.h"
 #include "platform_types.h"
 
 typedef struct {
@@ -14,7 +15,9 @@ typedef struct {
     GLuint vao;
     GLuint vbo;
     GLuint ebo;
-    GLuint tex;
+    Texture tex;
+    float timer;
+    char glyph;
 } Game_State;
 
 void on_init(Game_State *state, GLFWwindow *window, float window_w, float window_h, float window_px_w, float window_px_h, bool is_live_scene, GLuint fbo, int argc, char **argv);

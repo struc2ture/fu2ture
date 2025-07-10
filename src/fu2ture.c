@@ -14,6 +14,8 @@
 #include "gl_glue.h"
 #include "platform_types.h"
 
+#include "stuff.c"
+
 void on_init(Game_State *state, GLFWwindow *window, float window_w, float window_h, float window_px_w, float window_px_h, bool is_live_scene, GLuint fbo, int argc, char **argv)
 {
     if (!is_live_scene) glfwSetWindowTitle(window, "fu2ture");
@@ -27,36 +29,34 @@ void on_init(Game_State *state, GLFWwindow *window, float window_w, float window
         "#version 330 core\n"
         "layout(location = 0) in vec2 aPos;\n"
         "layout(location = 1) in vec2 aTexCoord;\n"
-        "layout(location = 2) in vec3 aColor;\n"
+        "layout(location = 2) in vec3 aFgColor;\n"
+        "layout(location = 3) in vec3 aBgColor;\n"
         "out vec2 TexCoord;\n"
-        "out vec3 Color;\n"
+        "out vec3 FgColor;\n"
+        "out vec3 BgColor;\n"
         "uniform mat4 u_mvp;\n"
         "void main() {\n"
         "  gl_Position = u_mvp * vec4(aPos, 0.0, 1.0);\n"
         "  TexCoord = aTexCoord;\n"
-        "  Color = aColor;\n"
+        "  FgColor = aFgColor;\n"
+        "  BgColor = aBgColor;\n"
         "}\n";
 
     const char *fs_src =
         "#version 330 core\n"
         "in vec2 TexCoord;\n"
-        "in vec3 Color;\n"
+        "in vec3 FgColor;\n"
+        "in vec3 BgColor;\n"
         "out vec4 FragColor;\n"
         "uniform sampler2D u_tex;\n"
         "void main() {\n"
         "  vec4 t = texture(u_tex, TexCoord);\n"
-        "  vec4 tex_color = vec4(t.r, t.r, t.r, t.g);\n"
-        "  FragColor = vec4(Color, 1.0) * tex_color;\n"
+        "  vec4 fg_color = vec4(FgColor, 1.0) * t.g;\n"
+        "  vec4 bg_color = vec4(BgColor, 1.0) * (1.0 - t.g);\n"
+        "  FragColor = fg_color + bg_color;\n"
         "}\n";
 
     state->prog = gl_create_shader_program(vs_src, fs_src);
-
-    float tri_verts[] = {
-         0, 1,  0, 1,  1, 1, 1,
-         0, 0,  0, 0,  1, 0, 0,
-         1, 0,  1, 0,  0, 1, 0,
-         1, 1,  1, 1,  0, 0, 1,
-    };
 
     unsigned char tri_indices[] = {
         0,2,1, 0,3,2
@@ -68,35 +68,20 @@ void on_init(Game_State *state, GLFWwindow *window, float window_w, float window
 
     glBindVertexArray(state->vao);
     glBindBuffer(GL_ARRAY_BUFFER, state->vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(tri_verts), tri_verts, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vert_buffer_max_size(), NULL, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, state->ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(tri_indices), tri_indices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void *)0);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(tri_indices), tri_indices, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vert), (void *)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void *)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vert), (void *)(offsetof(Vert, u)));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void *)(4 * sizeof(float)));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), (void *)(offsetof(Vert, fg)));
     glEnableVertexAttribArray(2);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), (void *)(offsetof(Vert, bg)));
+    glEnableVertexAttribArray(3);
     glBindVertexArray(0);
     
-    int tex_w, tex_h, tex_ch;
-    unsigned char *tex_data = stbi_load("res/hack64.png", &tex_w, &tex_h, &tex_ch, 0);
-    GLenum tex_format = (tex_ch == 3 ? GL_RGB : GL_RGBA);
-    //if (tex_ch == 2) tex_format = GL_RG;
-    
-    printf("TEXTURE: %d, %d, %d\n", tex_w, tex_h, tex_ch);
-    
-    glGenTextures(1, &state->tex);
-    glBindTexture(GL_TEXTURE_2D, state->tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8, tex_w, tex_h, 0, GL_RG, GL_UNSIGNED_BYTE, tex_data);
-    
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    
-    stbi_image_free(tex_data);
+    state->tex = gl_load_texture("res/hack64.png", GL_NEAREST);
 }
 
 void on_reload(Game_State *state)
@@ -115,8 +100,8 @@ void on_frame(Game_State *state, const Platform_Timing *t)
     
     Mat_4 proj = mat4_proj_ortho(0, state->window_dim.x, state->window_dim.y, 0, -1, 1);
 
-    float w = 600;
-    float h = 600;
+    float w = 100;
+    float h = 100;
     float x = state->window_dim.x * 0.5f - w * 0.5f;
     float y = state->window_dim.y * 0.5f - h * 0.5f;
     Mat_4 model = mat4_mul(mat4_translate(x, y, 0), mat4_scale(w, h, 0));
@@ -125,11 +110,17 @@ void on_frame(Game_State *state, const Platform_Timing *t)
     
     glUniform1i(glGetUniformLocation(state->prog, "u_tex"), 1);
     
-    glBindVertexArray(state->vao);
+    glBindVertexArray(state->vao);    
+    glBindTexture(GL_TEXTURE_2D, state->tex.texture_id);
     
-    glBindTexture(GL_TEXTURE_2D, state->tex);
-
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, 0);
+    state->timer += t->prev_delta_time;
+    if (state->timer >= 1.0f) 
+    {
+        state->timer -= 1.0f;
+        state->glyph++;
+    }
+    
+    draw_glyph(state, state->glyph, (Col_3f){0.9f, 0.7f, 0.7f}, (Col_3f){0.1f, 0.2f, 0.1f});
 }
 
 void on_platform_event(Game_State *state, const Platform_Event *e)
@@ -174,7 +165,7 @@ void on_platform_event(Game_State *state, const Platform_Event *e)
 
 void on_destroy(Game_State *state)
 {
-    glDeleteTextures(1, &state->tex);
+    gl_delete_texture(&state->tex);
     glDeleteBuffers(1, &state->vbo);
     glDeleteBuffers(1, &state->ebo);
     glDeleteVertexArrays(1, &state->vao);
