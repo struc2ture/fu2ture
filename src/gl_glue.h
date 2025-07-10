@@ -106,22 +106,113 @@ typedef struct {
 } Vert;
 
 #define VERT_MAX 4096
+#define INDEX_MAX 8192
 typedef struct {
     Vert verts[VERT_MAX];
     int vert_count;
+    
+    int indices[INDEX_MAX];
+    int index_count;
+    
+    GLuint vao, vbo, ebo;
 } Vert_Buffer;
+
+static inline size_t vert_buffer_vert_size(const Vert_Buffer *vb)
+{
+    return sizeof(Vert) * vb->vert_count;
+}
+
+static inline size_t vert_buffer_max_vert_size()
+{
+    return sizeof(Vert) * VERT_MAX;
+}
+
+static inline size_t vert_buffer_index_size(const Vert_Buffer *vb)
+{
+    return sizeof(int) * vb->index_count;
+}
+
+static inline size_t vert_buffer_max_index_size()
+{
+    return sizeof(int) * INDEX_MAX;
+}
+
+static inline Vert_Buffer *vert_buffer_make()
+{
+    Vert_Buffer *vb = malloc(sizeof(Vert_Buffer));
+    vb->vert_count = 0;
+    vb->index_count = 0;
+    
+    glGenVertexArrays(1, &vb->vao);
+    glGenBuffers(1, &vb->vbo);
+    glGenBuffers(1, &vb->ebo);
+
+    glBindVertexArray(vb->vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vb->vbo);
+    glBufferData(GL_ARRAY_BUFFER, vert_buffer_max_vert_size(), NULL, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vb->ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, vert_buffer_max_index_size(), NULL, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vert), (void *)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vert), (void *)(offsetof(Vert, u)));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), (void *)(offsetof(Vert, fg)));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), (void *)(offsetof(Vert, bg)));
+    glEnableVertexAttribArray(3);
+    glBindVertexArray(0);
+    
+    return vb;
+}
+
+static inline void vert_buffer_clear(Vert_Buffer *vb)
+{
+    vb->vert_count = 0;
+    vb->index_count = 0;
+}
+
+static inline void vert_buffer_free(Vert_Buffer *vb)
+{
+    glDeleteBuffers(1, &vb->vbo);
+    glDeleteBuffers(1, &vb->ebo);
+    glDeleteVertexArrays(1, &vb->vao);
+    free(vb);
+}
 
 static inline void vert_buffer_add_vert(Vert_Buffer *vert_buffer, Vert vert)
 {
-    vert_buffer->verts[vert_buffer->vert_count++] = vert;
+    if (vert_buffer->vert_count < VERT_MAX)
+    {
+        vert_buffer->verts[vert_buffer->vert_count++] = vert;
+    }
 }
 
-static inline size_t vert_buffer_size(Vert_Buffer *vert_buffer)
+static inline int vert_buffer_next_vert_index(const Vert_Buffer *vb)
 {
-    return sizeof(Vert) * vert_buffer->vert_count;
+    return vb->vert_count;
 }
 
-static inline size_t vert_buffer_max_size()
+static inline void vert_buffer_add_indices(Vert_Buffer *vb, int base, int *indices, int index_count)
 {
-    return sizeof(Vert) * VERT_MAX;
+    for (int i = 0; i < index_count; i++)
+    {
+        if (vb->index_count < INDEX_MAX)
+        {
+            vb->indices[vb->index_count++] = base + indices[i];
+        }
+    }
+}
+
+static inline void vert_buffer_draw_call(const Vert_Buffer *vb)
+{
+    glBindVertexArray(vb->vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vb->vbo);
+    glBufferData(GL_ARRAY_BUFFER, vert_buffer_max_vert_size(), NULL, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, vert_buffer_vert_size(vb), vb->verts);
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vb->ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, vert_buffer_max_index_size(), NULL, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, vert_buffer_index_size(vb), vb->indices);    
+
+    glDrawElements(GL_TRIANGLES, vb->index_count, GL_UNSIGNED_BYTE, 0);
 }

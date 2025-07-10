@@ -7,7 +7,7 @@ void on_run(Editor_State *s)
     char *dylib_path = strf("bin/%s.dylib", t_name);
     
     const char *cc = "clang";
-    const char *cflags = "-I/opt/homebrew/include -Ithird_party -DGL_SILENCE_DEPRECATION";
+    const char *cflags = "-I/opt/homebrew/include -Ithird_party -DGL_SILENCE_DEPRECATION -Werror";
     const char *lflags = "-L/opt/homebrew/lib -lglfw -framework OpenGL";
     char *compile_command = strf("%s -g -dynamiclib %s %s %s -o %s", cc, cflags, lflags, src_path, dylib_path);
     

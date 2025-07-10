@@ -58,30 +58,12 @@ void on_init(Game_State *state, GLFWwindow *window, float window_w, float window
 
     state->prog = gl_create_shader_program(vs_src, fs_src);
 
-    unsigned char tri_indices[] = {
-        0,2,1, 0,3,2
-    };
-
-    glGenVertexArrays(1, &state->vao);
-    glGenBuffers(1, &state->vbo);
-    glGenBuffers(1, &state->ebo);
-
-    glBindVertexArray(state->vao);
-    glBindBuffer(GL_ARRAY_BUFFER, state->vbo);
-    glBufferData(GL_ARRAY_BUFFER, vert_buffer_max_size(), NULL, GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, state->ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(tri_indices), tri_indices, GL_DYNAMIC_DRAW);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vert), (void *)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vert), (void *)(offsetof(Vert, u)));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), (void *)(offsetof(Vert, fg)));
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), (void *)(offsetof(Vert, bg)));
-    glEnableVertexAttribArray(3);
-    glBindVertexArray(0);
+    state->vert_buffer = vert_buffer_make();
     
-    state->tex = gl_load_texture("res/hack64.png", GL_NEAREST);
+    glActiveTexture(GL_TEXTURE1);
+    state->tex = gl_load_texture("/Users/struc/dev/jects/fu2ture/res/hack64.png", GL_NEAREST);
+    
+    state->map_grid_layer = map_grid_layer_make(16, 16, (Map_Glyph){'.', (Col_3f){0.2f, 0.2f, 2.3f}, (Col_3f){0.1f, 0.13f, 0.1f}});
 }
 
 void on_reload(Game_State *state)
@@ -104,13 +86,12 @@ void on_frame(Game_State *state, const Platform_Timing *t)
     float h = 100;
     float x = state->window_dim.x * 0.5f - w * 0.5f;
     float y = state->window_dim.y * 0.5f - h * 0.5f;
-    Mat_4 model = mat4_mul(mat4_translate(x, y, 0), mat4_scale(w, h, 0));
-    Mat_4 mvp = mat4_mul(proj, model);
+    Mat_4 mvp = proj;
     glUniformMatrix4fv(glGetUniformLocation(state->prog, "u_mvp"), 1, GL_FALSE, mvp.m);
     
     glUniform1i(glGetUniformLocation(state->prog, "u_tex"), 1);
     
-    glBindVertexArray(state->vao);    
+    glBindVertexArray(state->vao);
     glBindTexture(GL_TEXTURE_2D, state->tex.texture_id);
     
     state->timer += t->prev_delta_time;
@@ -120,7 +101,13 @@ void on_frame(Game_State *state, const Platform_Timing *t)
         state->glyph++;
     }
     
-    draw_glyph(state, state->glyph, (Col_3f){0.9f, 0.7f, 0.7f}, (Col_3f){0.1f, 0.2f, 0.1f});
+    #if 1
+    Map_Glyph g = {state->glyph, (Col_3f){0.9f, 0.7f, 0.7f}, (Col_3f){0.1f, 0.2f, 0.1f}};
+    Rect dest = {0, 0, 32, 32};
+    draw_map_glyph(state->vert_buffer, g, dest);
+    #else
+    draw_map_grid_layer(state->vert_buffer, &state->map_grid_layer, 0, 0, 32);
+    #endif    
 }
 
 void on_platform_event(Game_State *state, const Platform_Event *e)
@@ -165,9 +152,8 @@ void on_platform_event(Game_State *state, const Platform_Event *e)
 
 void on_destroy(Game_State *state)
 {
+    map_grid_layer_free(&state->map_grid_layer);
     gl_delete_texture(&state->tex);
-    glDeleteBuffers(1, &state->vbo);
-    glDeleteBuffers(1, &state->ebo);
-    glDeleteVertexArrays(1, &state->vao);
+    vert_buffer_free(state->vert_buffer);
     glDeleteProgram(state->prog);
 }
