@@ -111,7 +111,7 @@ typedef struct {
     Vert verts[VERT_MAX];
     int vert_count;
     
-    int indices[INDEX_MAX];
+    unsigned int indices[INDEX_MAX];
     int index_count;
     
     GLuint vao, vbo, ebo;
@@ -129,12 +129,12 @@ static inline size_t vert_buffer_max_vert_size()
 
 static inline size_t vert_buffer_index_size(const Vert_Buffer *vb)
 {
-    return sizeof(int) * vb->index_count;
+    return sizeof(unsigned int) * vb->index_count;
 }
 
 static inline size_t vert_buffer_max_index_size()
 {
-    return sizeof(int) * INDEX_MAX;
+    return sizeof(unsigned int) * INDEX_MAX;
 }
 
 static inline Vert_Buffer *vert_buffer_make()
@@ -214,5 +214,5 @@ static inline void vert_buffer_draw_call(const Vert_Buffer *vb)
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, vert_buffer_max_index_size(), NULL, GL_DYNAMIC_DRAW);
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, vert_buffer_index_size(vb), vb->indices);    
 
-    glDrawElements(GL_TRIANGLES, vb->index_count, GL_UNSIGNED_BYTE, 0);
+    glDrawElements(GL_TRIANGLES, vb->index_count, GL_UNSIGNED_INT, 0);
 }
