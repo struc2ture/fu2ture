@@ -40,41 +40,102 @@ void draw_glyph(Vert_Buffer *vb, Render_Glyph g, Rect dest)
     vert_buffer_draw_call(vb);
 }
 
-Glyph_Grid glyph_grid_make(int w, int h, Render_Glyph base_glyph, float cell_dim)
+void render_glyph_push(Vert_Buffer *vb, Render_Glyph glyph, int col, int row, Grid_Spec grid)
 {
-    Glyph_Grid grid;
-    grid.w = w;
-    grid.h = h;
-    grid.cell_dim = cell_dim;
-    grid.g = malloc(grid.w * grid.h * sizeof(grid.g[0]));
-    for (int i = 0; i < grid.w * grid.h; i++)
-    {
-        grid.g[i] = base_glyph;
-    }
-    return grid;
+    float x = grid.offset_x + (float)col * grid.tile_dim;
+    float y = grid.offset_y + (float)row * grid.tile_dim;
+    render_glyph_add_verts(vb, glyph, x, y, grid.tile_dim);
 }
 
-void glyph_grid_free(Glyph_Grid *grid)
-{
-    free(grid->g);
-    grid->g = NULL;
-    grid->w = 0;
-    grid->h = 0;
-}
+static const int map_tile_cols = 20;
+static const int map_tile_rows = 20;
 
-void draw_glyph_grid(Vert_Buffer *vb, const Glyph_Grid *grid, float offset_x, float offset_y)
-{
-    vert_buffer_clear(vb);
+static const int ui_tile_cols = 13;
+static const int ui_tile_rows = 25;
 
-    for (int row = 0; row < grid->h; row++)
+static const int log_tile_cols = 20;
+static const int log_tile_rows = 5;
+
+static const float tile_dim = 24.0f;
+
+void push_map_glyphs(Vert_Buffer *vb)
+{
+    Grid_Spec grid_spec = {
+        .tile_dim = tile_dim
+    };
+
+    for (int row = 0; row < map_tile_rows; row++)
     {
-        for (int col = 0; col < grid->w; col++)
+        for (int col = 0; col < map_tile_cols; col++)
         {
-            float x = offset_x + (float)col * grid->cell_dim;
-            float y = offset_y + (float)row * grid->cell_dim;
-            render_glyph_add_verts(vb, grid->g[row * grid->w + col], x, y, grid->cell_dim);
+            render_glyph_push(vb,
+                              (Render_Glyph){'.', (Col_3f){0.3f,0.295f,0.3f}, (Col_3f){0.1f,0.105f,0.1f}},
+                              col, row,
+                              grid_spec);
         }
     }
+}
 
-    vert_buffer_draw_call(vb);
+static const int glyph_idx_vert_border = 186;
+
+static const float ui_x_offset = map_tile_cols * tile_dim;
+
+void push_ui_glyphs(Vert_Buffer *vb)
+{
+    Grid_Spec grid_spec = {
+        .tile_dim = tile_dim,
+        .offset_x = ui_x_offset
+    };
+
+    for (int row = 0; row < ui_tile_rows; row++)
+    {
+        for (int col = 0; col < ui_tile_cols; col++)
+        {
+            Render_Glyph g;
+            if (col == 0)
+            {
+                g = (Render_Glyph){glyph_idx_vert_border, (Col_3f){0.3f,0.295f,0.3f}, (Col_3f){0.1f,0.105f,0.1f}};
+            }
+            else
+            {
+                g = (Render_Glyph){'U', (Col_3f){0.3f,0.295f,0.3f}, (Col_3f){0.1f,0.105f,0.1f}};
+            }
+            render_glyph_push(vb,
+                              g,
+                              col, row,
+                              grid_spec);
+        }
+    }
+}
+
+static const int glyph_idx_horiz_border = 205;
+
+static const float log_y_offset = map_tile_rows * tile_dim;
+
+void push_log_glyphs(Vert_Buffer *vb)
+{
+    Grid_Spec grid_spec = {
+        .tile_dim = tile_dim,
+        .offset_y = log_y_offset
+    };
+
+    for (int row = 0; row < log_tile_rows; row++)
+    {
+        for (int col = 0; col < log_tile_cols; col++)
+        {
+            Render_Glyph g;
+            if (row == 0)
+            {
+                g = (Render_Glyph){glyph_idx_horiz_border, (Col_3f){0.3f,0.295f,0.3f}, (Col_3f){0.1f,0.105f,0.1f}};
+            }
+            else
+            {
+                g = (Render_Glyph){'L', (Col_3f){0.3f,0.295f,0.3f}, (Col_3f){0.1f,0.105f,0.1f}};
+            }
+            render_glyph_push(vb,
+                              g,
+                              col, row,
+                              grid_spec);
+        }
+    }
 }

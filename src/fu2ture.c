@@ -16,17 +16,6 @@
 
 #include "stuff.c"
 
-static const int map_tile_cols = 20;
-static const int map_tile_rows = 20;
-
-static const int ui_tile_cols = 13;
-static const int ui_tile_rows = 25;
-
-static const int log_tile_cols = 20;
-static const int log_tile_rows = 5;
-
-static const float tile_dim = 24.0f;
-
 void on_init(Game_State *state, GLFWwindow *window, float window_w, float window_h, float window_px_w, float window_px_h, bool is_live_scene, GLuint fbo, int argc, char **argv)
 {
     if (!is_live_scene) glfwSetWindowTitle(window, "fu2ture");
@@ -73,26 +62,10 @@ void on_init(Game_State *state, GLFWwindow *window, float window_w, float window
 
     glActiveTexture(GL_TEXTURE1);
     state->tex = gl_load_texture("/Users/struc/dev/jects/fu2ture/res/hack64.png", GL_NEAREST);
-
-    state->map_grid = glyph_grid_make(map_tile_cols,
-                                      map_tile_rows,
-                                      (Render_Glyph){'.', (Col_3f){0.2f, 0.2f, 0.23f}, (Col_3f){0.1f, 0.13f, 0.1f}},
-                                      tile_dim);
-
-    state->ui_grid = glyph_grid_make(ui_tile_cols,
-                                     ui_tile_rows,
-                                     (Render_Glyph){'U', (Col_3f){0.2f, 0.2f, 0.23f}, (Col_3f){0.1f, 0.13f, 0.1f}},
-                                     tile_dim);
-
-    state->log_grid = glyph_grid_make(log_tile_cols,
-                                      log_tile_rows,
-                                      (Render_Glyph){'L', (Col_3f){0.2f, 0.2f, 0.23f}, (Col_3f){0.1f, 0.13f, 0.1f}},
-                                      tile_dim);
 }
 
 void on_reload(Game_State *state)
 {
-    (void)state;
 }
 
 void on_frame(Game_State *state, const Platform_Timing *t)
@@ -117,11 +90,13 @@ void on_frame(Game_State *state, const Platform_Timing *t)
 
     glBindTexture(GL_TEXTURE_2D, state->tex.texture_id);
 
-    draw_glyph_grid(state->vert_buffer, &state->map_grid, 0, 0);
+    vert_buffer_clear(state->vert_buffer);
 
-    draw_glyph_grid(state->vert_buffer, &state->ui_grid, map_tile_cols * tile_dim, 0);
+    push_map_glyphs(state->vert_buffer);
+    push_ui_glyphs(state->vert_buffer);
+    push_log_glyphs(state->vert_buffer);
 
-    draw_glyph_grid(state->vert_buffer, &state->log_grid, 0, map_tile_rows * tile_dim);
+    vert_buffer_draw_call(state->vert_buffer);
 }
 
 void on_platform_event(Game_State *state, const Platform_Event *e)
@@ -166,9 +141,6 @@ void on_platform_event(Game_State *state, const Platform_Event *e)
 
 void on_destroy(Game_State *state)
 {
-    glyph_grid_free(&state->map_grid);
-    glyph_grid_free(&state->ui_grid);
-    glyph_grid_free(&state->log_grid);
     gl_delete_texture(&state->tex);
     vert_buffer_free(state->vert_buffer);
     glDeleteProgram(state->prog);

@@ -19,9 +19,6 @@ typedef struct {
     Texture tex;
     float timer;
     char glyph;
-    Glyph_Grid map_grid;
-    Glyph_Grid ui_grid;
-    Glyph_Grid log_grid;
     Vert_Buffer *vert_buffer;
 } Game_State;
 

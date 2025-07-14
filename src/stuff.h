@@ -6,10 +6,10 @@ typedef struct {
 } Render_Glyph;
 
 typedef struct {
-    Render_Glyph *g;
-    int w, h;
-    float cell_dim;
-} Glyph_Grid;
+    float tile_dim;
+    float offset_x;
+    float offset_y;
+} Grid_Spec;
 
 typedef struct {
     float x_min, x_max;
