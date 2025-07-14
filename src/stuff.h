@@ -3,12 +3,13 @@
 typedef struct {
     unsigned char idx;
     Col_3f fg, bg;
-} Map_Glyph;
+} Render_Glyph;
 
 typedef struct {
-    Map_Glyph *g;
+    Render_Glyph *g;
     int w, h;
-} Map_Grid_Layer;
+    float cell_dim;
+} Glyph_Grid;
 
 typedef struct {
     float x_min, x_max;

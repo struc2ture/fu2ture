@@ -2,7 +2,7 @@
 
 static const float atlas_quad_dim = 1.0f / 16.0f;
 
-Quad map_glyph_get_quad(Map_Glyph g)
+Quad render_glyph_get_quad(Render_Glyph g)
 {
     int atlas_x = g.idx % 16;
     int atlas_y = g.idx / 16;
@@ -13,11 +13,11 @@ Quad map_glyph_get_quad(Map_Glyph g)
     return (Quad){q_x_min, q_x_max, q_y_min, q_y_max};
 }
 
-void map_glyph_add_verts(Vert_Buffer *vb, Map_Glyph g, float offset_x, float offset_y, float cell_dim)
+void render_glyph_add_verts(Vert_Buffer *vb, Render_Glyph g, float offset_x, float offset_y, float cell_dim)
 {
     int index_base = vert_buffer_next_vert_index(vb);
 
-    Quad q = map_glyph_get_quad(g);
+    Quad q = render_glyph_get_quad(g);
     float d_x_min = offset_x;
     float d_x_max = d_x_min + cell_dim;
     float d_y_min = offset_y;
@@ -31,49 +31,50 @@ void map_glyph_add_verts(Vert_Buffer *vb, Map_Glyph g, float offset_x, float off
     vert_buffer_add_indices(vb, index_base, indices, 6);
 }
 
-void draw_map_glyph(Vert_Buffer *vb, Map_Glyph g, Rect dest)
+void draw_glyph(Vert_Buffer *vb, Render_Glyph g, Rect dest)
 {
     vert_buffer_clear(vb);
 
-    map_glyph_add_verts(vb, g, dest.x, dest.y, dest.w);
+    render_glyph_add_verts(vb, g, dest.x, dest.y, dest.w);
 
     vert_buffer_draw_call(vb);
 }
 
-Map_Grid_Layer map_grid_layer_make(int w, int h, Map_Glyph base_glyph)
+Glyph_Grid glyph_grid_make(int w, int h, Render_Glyph base_glyph, float cell_dim)
 {
-    Map_Grid_Layer layer;
-    layer.w = w;
-    layer.h = h;
-    layer.g = malloc(layer.w * layer.h * sizeof(layer.g[0]));
-    for (int i = 0; i < layer.w * layer.h; i++)
+    Glyph_Grid grid;
+    grid.w = w;
+    grid.h = h;
+    grid.cell_dim = cell_dim;
+    grid.g = malloc(grid.w * grid.h * sizeof(grid.g[0]));
+    for (int i = 0; i < grid.w * grid.h; i++)
     {
-        layer.g[i] = base_glyph;
+        grid.g[i] = base_glyph;
     }
-    return layer;
+    return grid;
 }
 
-void map_grid_layer_free(Map_Grid_Layer *layer)
+void glyph_grid_free(Glyph_Grid *grid)
 {
-    free(layer->g);
-    layer->g = NULL;
-    layer->w = 0;
-    layer->h = 0;
+    free(grid->g);
+    grid->g = NULL;
+    grid->w = 0;
+    grid->h = 0;
 }
 
-void draw_map_grid_layer(Vert_Buffer *vb, const Map_Grid_Layer *layer, float offset_x, float offset_y, float cell_dim)
+void draw_glyph_grid(Vert_Buffer *vb, const Glyph_Grid *grid, float offset_x, float offset_y)
 {
     vert_buffer_clear(vb);
 
-    for (int row = 0; row < layer->h; row++)
+    for (int row = 0; row < grid->h; row++)
     {
-        for (int col = 0; col < layer->w; col++)
+        for (int col = 0; col < grid->w; col++)
         {
-            float x = offset_x + (float)row * cell_dim;
-            float y = offset_y + (float)col * cell_dim;
-            map_glyph_add_verts(vb, layer->g[row * layer->w + col], x, y, cell_dim);
+            float x = offset_x + (float)col * grid->cell_dim;
+            float y = offset_y + (float)row * grid->cell_dim;
+            render_glyph_add_verts(vb, grid->g[row * grid->w + col], x, y, grid->cell_dim);
         }
     }
-    
+
     vert_buffer_draw_call(vb);
 }

@@ -16,6 +16,17 @@
 
 #include "stuff.c"
 
+static const int map_tile_cols = 20;
+static const int map_tile_rows = 20;
+
+static const int ui_tile_cols = 13;
+static const int ui_tile_rows = 25;
+
+static const int log_tile_cols = 20;
+static const int log_tile_rows = 5;
+
+static const float tile_dim = 24.0f;
+
 void on_init(Game_State *state, GLFWwindow *window, float window_w, float window_h, float window_px_w, float window_px_h, bool is_live_scene, GLuint fbo, int argc, char **argv)
 {
     if (!is_live_scene) glfwSetWindowTitle(window, "fu2ture");
@@ -59,11 +70,24 @@ void on_init(Game_State *state, GLFWwindow *window, float window_w, float window
     state->prog = gl_create_shader_program(vs_src, fs_src);
 
     state->vert_buffer = vert_buffer_make();
-    
+
     glActiveTexture(GL_TEXTURE1);
     state->tex = gl_load_texture("/Users/struc/dev/jects/fu2ture/res/hack64.png", GL_NEAREST);
-    
-    state->map_grid_layer = map_grid_layer_make(16, 16, (Map_Glyph){'.', (Col_3f){0.2f, 0.2f, 2.3f}, (Col_3f){0.1f, 0.13f, 0.1f}});
+
+    state->map_grid = glyph_grid_make(map_tile_cols,
+                                      map_tile_rows,
+                                      (Render_Glyph){'.', (Col_3f){0.2f, 0.2f, 0.23f}, (Col_3f){0.1f, 0.13f, 0.1f}},
+                                      tile_dim);
+
+    state->ui_grid = glyph_grid_make(ui_tile_cols,
+                                     ui_tile_rows,
+                                     (Render_Glyph){'U', (Col_3f){0.2f, 0.2f, 0.23f}, (Col_3f){0.1f, 0.13f, 0.1f}},
+                                     tile_dim);
+
+    state->log_grid = glyph_grid_make(log_tile_cols,
+                                      log_tile_rows,
+                                      (Render_Glyph){'L', (Col_3f){0.2f, 0.2f, 0.23f}, (Col_3f){0.1f, 0.13f, 0.1f}},
+                                      tile_dim);
 }
 
 void on_reload(Game_State *state)
@@ -74,12 +98,12 @@ void on_reload(Game_State *state)
 void on_frame(Game_State *state, const Platform_Timing *t)
 {
     glViewport(0, 0, (GLsizei)state->framebuffer_dim.x, (GLsizei)state->framebuffer_dim.y);
-    
+
     glClearColor(0.7f, 0.5f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    
+
     glUseProgram(state->prog);
-    
+
     Mat_4 proj = mat4_proj_ortho(0, state->window_dim.x, state->window_dim.y, 0, -1, 1);
 
     float w = 100;
@@ -88,26 +112,16 @@ void on_frame(Game_State *state, const Platform_Timing *t)
     float y = state->window_dim.y * 0.5f - h * 0.5f;
     Mat_4 mvp = proj;
     glUniformMatrix4fv(glGetUniformLocation(state->prog, "u_mvp"), 1, GL_FALSE, mvp.m);
-    
+
     glUniform1i(glGetUniformLocation(state->prog, "u_tex"), 1);
-    
-    glBindVertexArray(state->vao);
+
     glBindTexture(GL_TEXTURE_2D, state->tex.texture_id);
-    
-    state->timer += t->prev_delta_time;
-    if (state->timer >= 1.0f) 
-    {
-        state->timer -= 1.0f;
-        state->glyph++;
-    }
-    
-    #if 1
-    Map_Glyph g = {state->glyph, (Col_3f){0.9f, 0.7f, 0.7f}, (Col_3f){0.1f, 0.2f, 0.1f}};
-    Rect dest = {0, 0, 32, 32};
-    draw_map_glyph(state->vert_buffer, g, dest);
-    #else
-    draw_map_grid_layer(state->vert_buffer, &state->map_grid_layer, 0, 0, 32);
-    #endif    
+
+    draw_glyph_grid(state->vert_buffer, &state->map_grid, 0, 0);
+
+    draw_glyph_grid(state->vert_buffer, &state->ui_grid, map_tile_cols * tile_dim, 0);
+
+    draw_glyph_grid(state->vert_buffer, &state->log_grid, 0, map_tile_rows * tile_dim);
 }
 
 void on_platform_event(Game_State *state, const Platform_Event *e)
@@ -152,7 +166,9 @@ void on_platform_event(Game_State *state, const Platform_Event *e)
 
 void on_destroy(Game_State *state)
 {
-    map_grid_layer_free(&state->map_grid_layer);
+    glyph_grid_free(&state->map_grid);
+    glyph_grid_free(&state->ui_grid);
+    glyph_grid_free(&state->log_grid);
     gl_delete_texture(&state->tex);
     vert_buffer_free(state->vert_buffer);
     glDeleteProgram(state->prog);

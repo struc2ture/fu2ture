@@ -69,23 +69,23 @@ static Texture gl_load_texture(const char *path, GLint sampling_type)
 {
     Texture tex;
     unsigned char *tex_data = stbi_load(path, &tex.w, &tex.h, &tex.ch, 0);
-    
+
     if (tex.ch == 4) { tex.internal_format = GL_RGBA8; tex.format = GL_RGBA; }
     else if (tex.ch == 3) { tex.internal_format = GL_RGB8; tex.format = GL_RGB; }
     else if (tex.ch == 2) { tex.internal_format = GL_RG8; tex.format = GL_RG; }
     else if (tex.ch == 1) { tex.internal_format = GL_R8; tex.format = GL_RED; }
-    
+
     glGenTextures(1, &tex.texture_id);
     glBindTexture(GL_TEXTURE_2D, tex.texture_id);
     glTexImage2D(GL_TEXTURE_2D, 0, tex.internal_format, tex.w, tex.h, 0, tex.format, GL_UNSIGNED_BYTE, tex_data);
-    
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, sampling_type);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, sampling_type);
-    
+
     glBindTexture(GL_TEXTURE_2D, 0);
-    
+
     stbi_image_free(tex_data);
-    
+
     return tex;
 }
 
@@ -110,10 +110,10 @@ typedef struct {
 typedef struct {
     Vert verts[VERT_MAX];
     int vert_count;
-    
+
     unsigned int indices[INDEX_MAX];
     int index_count;
-    
+
     GLuint vao, vbo, ebo;
 } Vert_Buffer;
 
@@ -142,7 +142,7 @@ static inline Vert_Buffer *vert_buffer_make()
     Vert_Buffer *vb = malloc(sizeof(Vert_Buffer));
     vb->vert_count = 0;
     vb->index_count = 0;
-    
+
     glGenVertexArrays(1, &vb->vao);
     glGenBuffers(1, &vb->vbo);
     glGenBuffers(1, &vb->ebo);
@@ -161,7 +161,7 @@ static inline Vert_Buffer *vert_buffer_make()
     glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), (void *)(offsetof(Vert, bg)));
     glEnableVertexAttribArray(3);
     glBindVertexArray(0);
-    
+
     return vb;
 }
 
@@ -209,10 +209,10 @@ static inline void vert_buffer_draw_call(const Vert_Buffer *vb)
     glBindBuffer(GL_ARRAY_BUFFER, vb->vbo);
     glBufferData(GL_ARRAY_BUFFER, vert_buffer_max_vert_size(), NULL, GL_DYNAMIC_DRAW);
     glBufferSubData(GL_ARRAY_BUFFER, 0, vert_buffer_vert_size(vb), vb->verts);
-    
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vb->ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, vert_buffer_max_index_size(), NULL, GL_DYNAMIC_DRAW);
-    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, vert_buffer_index_size(vb), vb->indices);    
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, vert_buffer_index_size(vb), vb->indices);
 
     glDrawElements(GL_TRIANGLES, vb->index_count, GL_UNSIGNED_INT, 0);
 }
