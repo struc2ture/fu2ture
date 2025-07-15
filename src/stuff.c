@@ -1,7 +1,5 @@
 #include "stuff.h"
 
-static const float atlas_quad_dim = 1.0f / 16.0f;
-
 Quad render_glyph_get_quad(Render_Glyph g)
 {
     int atlas_x = g.idx % 16;
@@ -47,18 +45,17 @@ void render_glyph_push(Vert_Buffer *vb, Render_Glyph glyph, int col, int row, Gr
     render_glyph_add_verts(vb, glyph, x, y, grid.tile_dim);
 }
 
-static const int map_tile_cols = 20;
-static const int map_tile_rows = 20;
+Render_Glyph get_glyph_for_tile(Tile_Kind kind)
+{
+    switch (kind)
+    {
+        case TILE_NONE: return (Render_Glyph){'!', (Col_3f){1,0,0}, (Col_3f){1,1,0}};
+        case TILE_GROUND: return (Render_Glyph){'.', (Col_3f){0.3f,0.295f,0.3f}, COL_DARK_BG};
+        case TILE_WALL: return (Render_Glyph){'#', (Col_3f){0.6f,0.595f,0.6f}, COL_DARK_BG};
+    }
+}
 
-static const int ui_tile_cols = 13;
-static const int ui_tile_rows = 25;
-
-static const int log_tile_cols = 20;
-static const int log_tile_rows = 5;
-
-static const float tile_dim = 24.0f;
-
-void push_map_glyphs(Vert_Buffer *vb)
+void push_map_glyphs(Vert_Buffer *vb, const Game_Map *map)
 {
     Grid_Spec grid_spec = {
         .tile_dim = tile_dim
@@ -69,16 +66,12 @@ void push_map_glyphs(Vert_Buffer *vb)
         for (int col = 0; col < map_tile_cols; col++)
         {
             render_glyph_push(vb,
-                              (Render_Glyph){'.', (Col_3f){0.3f,0.295f,0.3f}, (Col_3f){0.1f,0.105f,0.1f}},
+                              get_glyph_for_tile(map->tiles[row * map->w + col]),
                               col, row,
                               grid_spec);
         }
     }
 }
-
-static const int glyph_idx_vert_border = 186;
-
-static const float ui_x_offset = map_tile_cols * tile_dim;
 
 void push_ui_glyphs(Vert_Buffer *vb)
 {
@@ -108,10 +101,6 @@ void push_ui_glyphs(Vert_Buffer *vb)
     }
 }
 
-static const int glyph_idx_horiz_border = 205;
-
-static const float log_y_offset = map_tile_rows * tile_dim;
-
 void push_log_glyphs(Vert_Buffer *vb)
 {
     Grid_Spec grid_spec = {
@@ -138,4 +127,36 @@ void push_log_glyphs(Vert_Buffer *vb)
                               grid_spec);
         }
     }
+}
+
+Game_Map game_map_make(int w, int h, Tile_Kind base_tile)
+{
+    Game_Map map;
+    map.tiles = malloc(w * h * sizeof(map.tiles[0]));
+    for (int i = 0; i < w * h; i++)
+    {
+        map.tiles[i] = base_tile;
+    }
+    map.w = w;
+    map.h = h;
+    return map;
+}
+
+void game_map_free(Game_Map *map)
+{
+    free(map->tiles);
+    map->w = 0;
+    map->h = 0;
+}
+
+void push_player_glyph(Vert_Buffer *vb, Player player)
+{
+    Grid_Spec grid_spec = {
+        .tile_dim = tile_dim
+    };
+
+    render_glyph_push(vb,
+                      player_glyph,
+                      player.x, player.y,
+                      grid_spec);
 }

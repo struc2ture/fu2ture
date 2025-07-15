@@ -20,6 +20,8 @@ typedef struct {
     float timer;
     char glyph;
     Vert_Buffer *vert_buffer;
+    Game_Map map;
+    Player player;
 } Game_State;
 
 void on_init(Game_State *state, GLFWwindow *window, float window_w, float window_h, float window_px_w, float window_px_h, bool is_live_scene, GLuint fbo, int argc, char **argv);

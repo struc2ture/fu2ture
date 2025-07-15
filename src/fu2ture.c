@@ -14,7 +14,9 @@
 #include "gl_glue.h"
 #include "platform_types.h"
 
+#include "consts.c"
 #include "stuff.c"
+#include "actions.c"
 
 void on_init(Game_State *state, GLFWwindow *window, float window_w, float window_h, float window_px_w, float window_px_h, bool is_live_scene, GLuint fbo, int argc, char **argv)
 {
@@ -62,10 +64,13 @@ void on_init(Game_State *state, GLFWwindow *window, float window_w, float window
 
     glActiveTexture(GL_TEXTURE1);
     state->tex = gl_load_texture("/Users/struc/dev/jects/fu2ture/res/hack64.png", GL_NEAREST);
+
+    generate_game_map(state);
 }
 
 void on_reload(Game_State *state)
 {
+    generate_game_map(state);
 }
 
 void on_frame(Game_State *state, const Platform_Timing *t)
@@ -92,9 +97,11 @@ void on_frame(Game_State *state, const Platform_Timing *t)
 
     vert_buffer_clear(state->vert_buffer);
 
-    push_map_glyphs(state->vert_buffer);
+    push_map_glyphs(state->vert_buffer, &state->map);
     push_ui_glyphs(state->vert_buffer);
     push_log_glyphs(state->vert_buffer);
+
+    push_player_glyph(state->vert_buffer, state->player);
 
     vert_buffer_draw_call(state->vert_buffer);
 }
